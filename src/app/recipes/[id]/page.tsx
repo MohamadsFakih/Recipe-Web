@@ -26,6 +26,20 @@ export default async function RecipePage({ params }: { params: Promise<{ id: str
 
   if (!recipe) notFound();
 
+  const [likeCount, userLike, comments] = await Promise.all([
+    prisma.recipeLike.count({ where: { recipeId: id } }),
+    prisma.recipeLike.findUnique({
+      where: { recipeId_userId: { recipeId: id, userId: session.user.id } },
+    }),
+    prisma.recipeComment.findMany({
+      where: { recipeId: id },
+      orderBy: { createdAt: "asc" },
+      include: {
+        user: { select: { id: true, name: true, email: true, image: true } },
+      },
+    }),
+  ]);
+
   const ingredients = JSON.parse(recipe.ingredients || "[]") as string[];
   const imageUrls = recipe.imageUrls
     ? (JSON.parse(recipe.imageUrls) as string[])
@@ -34,6 +48,13 @@ export default async function RecipePage({ params }: { params: Promise<{ id: str
       : [];
   const isOwner = recipe.userId === session.user.id;
   const canEdit = isOwner || (recipe.shares?.[0]?.canEdit ?? false);
+
+  const commentList = comments.map((c) => ({
+    id: c.id,
+    text: c.text,
+    createdAt: c.createdAt.toISOString(),
+    user: c.user,
+  }));
 
   return (
     <div className="min-h-screen">
@@ -47,6 +68,9 @@ export default async function RecipePage({ params }: { params: Promise<{ id: str
           }}
           isOwner={isOwner}
           canEdit={canEdit}
+          likeCount={likeCount}
+          userLiked={!!userLike}
+          comments={commentList}
         />
       </main>
     </div>

@@ -28,6 +28,8 @@ model User {
   friendRequestsReceived FriendRequest[] @relation("FriendRequestsReceived")
   notificationsReceived Notification[] @relation("NotificationsReceived")
   notificationsSent     Notification[] @relation("NotificationsSent")
+  recipeLikes    RecipeLike[]
+  recipeComments RecipeComment[]
 }
 
 model Notification {
@@ -60,6 +62,30 @@ model Recipe {
   userId String
   user   User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   shares RecipeShare[]
+  likes  RecipeLike[]
+  comments RecipeComment[]
+}
+
+model RecipeLike {
+  id       String   @id @default(cuid())
+  recipeId String
+  recipe   Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([recipeId, userId])
+}
+
+model RecipeComment {
+  id        String   @id @default(cuid())
+  text      String
+  createdAt DateTime @default(now())
+
+  recipeId String
+  recipe   Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Friend {

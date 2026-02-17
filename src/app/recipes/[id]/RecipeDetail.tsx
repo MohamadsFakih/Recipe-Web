@@ -20,6 +20,13 @@ type Recipe = {
   user?: { id: string; email: string | null; name: string | null };
 };
 
+type Comment = {
+  id: string;
+  text: string;
+  createdAt: string;
+  user: { id: string; name: string | null; email: string | null; image: string | null };
+};
+
 const statusConfig: Record<string, { label: string; color: string }> = {
   FAVORITE:    { label: "Favourite",   color: "bg-amber-100 text-amber-800" },
   TO_TRY:      { label: "To try",      color: "bg-sky-100 text-sky-800" },
@@ -30,15 +37,27 @@ export default function RecipeDetail({
   recipe,
   isOwner,
   canEdit = isOwner,
+  likeCount: initialLikeCount = 0,
+  userLiked: initialUserLiked = false,
+  comments: initialComments = [],
 }: {
   recipe: Recipe;
   isOwner: boolean;
   canEdit?: boolean;
+  likeCount?: number;
+  userLiked?: boolean;
+  comments?: Comment[];
 }) {
   const router = useRouter();
   const [linkCopied, setLinkCopied] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(new Set());
+  const [likeCount, setLikeCount] = useState(initialLikeCount);
+  const [userLiked, setUserLiked] = useState(initialUserLiked);
+  const [liking, setLiking] = useState(false);
+  const [comments, setComments] = useState<Comment[]>(initialComments);
+  const [commentText, setCommentText] = useState("");
+  const [commenting, setCommenting] = useState(false);
 
   const images = recipe.imageUrls && recipe.imageUrls.length > 0
     ? recipe.imageUrls
@@ -76,6 +95,45 @@ export default function RecipeDetail({
     if (res.ok) {
       router.push("/dashboard");
       router.refresh();
+    }
+  }
+
+  async function toggleLike() {
+    if (liking || isOwner) return;
+    setLiking(true);
+    try {
+      const res = userLiked
+        ? await fetch(`/api/recipes/${recipe.id}/likes`, { method: "DELETE" })
+        : await fetch(`/api/recipes/${recipe.id}/likes`, { method: "POST" });
+      const data = await res.json();
+      if (res.ok) {
+        setLikeCount(data.count ?? (userLiked ? likeCount - 1 : likeCount + 1));
+        setUserLiked(data.liked ?? !userLiked);
+      }
+    } finally {
+      setLiking(false);
+    }
+  }
+
+  async function submitComment(e: React.FormEvent) {
+    e.preventDefault();
+    const text = commentText.trim();
+    if (!text || commenting) return;
+    setCommenting(true);
+    try {
+      const res = await fetch(`/api/recipes/${recipe.id}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setComments((prev) => [...prev, data]);
+        setCommentText("");
+        router.refresh();
+      }
+    } finally {
+      setCommenting(false);
     }
   }
 
@@ -213,6 +271,30 @@ export default function RecipeDetail({
 
         {/* Actions */}
         <div className="flex items-center gap-2 shrink-0">
+          {!isOwner && (
+            <button
+              type="button"
+              onClick={toggleLike}
+              disabled={liking}
+              className={`btn flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm transition-colors ${
+                userLiked
+                  ? "bg-red-100 text-red-700 border border-red-200 hover:bg-red-200/80"
+                  : "btn-outline"
+              }`}
+              aria-pressed={userLiked}
+            >
+              {userLiked ? (
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                </svg>
+              )}
+              <span>{likeCount}</span>
+            </button>
+          )}
           <button
             type="button"
             onClick={copyRecipeLink}
@@ -321,7 +403,7 @@ export default function RecipeDetail({
               <p className="text-xs text-[var(--muted)] mb-4">
                 {recipe.ingredients.length} item{recipe.ingredients.length !== 1 ? "s" : ""} · tap to check off
               </p>
-              <ul className="space-y-2">
+              <ul className="space-y-2 max-h-[min(400px,50vh)] overflow-y-auto overflow-x-hidden pr-1">
                 {recipe.ingredients.map((ing, i) => (
                   <li key={i}>
                     <button
@@ -391,8 +473,70 @@ export default function RecipeDetail({
         )}
       </div>
 
+      {/* ── Comments ── */}
+      <section className="mt-10 pt-8 border-t border-[var(--card-border)]">
+        <h2
+          className="text-lg font-bold text-[var(--foreground)] mb-4"
+          style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}
+        >
+          Comments {comments.length > 0 && `(${comments.length})`}
+        </h2>
+        <ul className="space-y-4 mb-6">
+          {comments.map((c) => (
+            <li key={c.id} className="card rounded-xl p-4">
+              <div className="flex items-start gap-3">
+                <Link
+                  href={`/users/${c.user.id}`}
+                  className="shrink-0 w-9 h-9 rounded-full overflow-hidden bg-[var(--accent-soft)] flex items-center justify-center text-sm font-bold text-[var(--accent)]"
+                >
+                  {c.user.image ? (
+                    <Image src={c.user.image} alt="" width={36} height={36} className="w-full h-full object-cover" unoptimized />
+                  ) : (
+                    (c.user.name || c.user.email || "?").charAt(0).toUpperCase()
+                  )}
+                </Link>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Link
+                      href={`/users/${c.user.id}`}
+                      className="text-sm font-medium text-[var(--foreground)] hover:text-[var(--accent)] hover:underline"
+                    >
+                      {c.user.name || c.user.email || "Someone"}
+                    </Link>
+                    <span className="text-xs text-[var(--muted)]">
+                      {new Date(c.createdAt).toLocaleString(undefined, {
+                        dateStyle: "medium",
+                        timeStyle: "short",
+                      })}
+                    </span>
+                  </div>
+                  <p className="text-sm text-[var(--foreground)] mt-1 whitespace-pre-wrap break-words">{c.text}</p>
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+        <form onSubmit={submitComment} className="flex flex-col gap-2">
+          <textarea
+            value={commentText}
+            onChange={(e) => setCommentText(e.target.value)}
+            placeholder="Add a comment..."
+            rows={3}
+            maxLength={2000}
+            className="w-full px-4 py-3 rounded-xl border border-[var(--card-border)] bg-[var(--surface)] text-[var(--foreground)] placeholder:text-[var(--muted)] text-sm resize-y focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
+          />
+          <button
+            type="submit"
+            disabled={!commentText.trim() || commenting}
+            className="btn btn-primary self-end px-4 py-2 rounded-xl text-sm disabled:opacity-50"
+          >
+            {commenting ? "Posting…" : "Post comment"}
+          </button>
+        </form>
+      </section>
+
       {/* ── Footer ── */}
-      <div className="pt-8 border-t border-[var(--card-border)] flex flex-wrap items-center justify-between gap-4">
+      <div className="pt-8 border-t border-[var(--card-border)] flex flex-wrap items-center justify-between gap-4 mt-8">
         <Link
           href="/dashboard"
           className="flex items-center gap-1.5 text-sm text-[var(--muted)] hover:text-[var(--accent)] transition-colors"
