@@ -39,6 +39,7 @@ export default function RecipeDetail({
   canEdit = isOwner,
   likeCount: initialLikeCount = 0,
   userLiked: initialUserLiked = false,
+  userFavorited: initialUserFavorited = false,
   comments: initialComments = [],
 }: {
   recipe: Recipe;
@@ -46,6 +47,7 @@ export default function RecipeDetail({
   canEdit?: boolean;
   likeCount?: number;
   userLiked?: boolean;
+  userFavorited?: boolean;
   comments?: Comment[];
 }) {
   const router = useRouter();
@@ -55,6 +57,8 @@ export default function RecipeDetail({
   const [likeCount, setLikeCount] = useState(initialLikeCount);
   const [userLiked, setUserLiked] = useState(initialUserLiked);
   const [liking, setLiking] = useState(false);
+  const [userFavorited, setUserFavorited] = useState(initialUserFavorited);
+  const [favoriting, setFavoriting] = useState(false);
   const [comments, setComments] = useState<Comment[]>(initialComments);
   const [commentText, setCommentText] = useState("");
   const [commenting, setCommenting] = useState(false);
@@ -112,6 +116,20 @@ export default function RecipeDetail({
       }
     } finally {
       setLiking(false);
+    }
+  }
+
+  async function toggleFavorite() {
+    if (favoriting) return;
+    setFavoriting(true);
+    try {
+      const res = userFavorited
+        ? await fetch(`/api/recipes/${recipe.id}/favorite`, { method: "DELETE" })
+        : await fetch(`/api/recipes/${recipe.id}/favorite`, { method: "POST" });
+      const data = await res.json();
+      if (res.ok) setUserFavorited(data.favorited ?? !userFavorited);
+    } finally {
+      setFavoriting(false);
     }
   }
 
@@ -271,6 +289,29 @@ export default function RecipeDetail({
 
         {/* Actions */}
         <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={toggleFavorite}
+            disabled={favoriting}
+            className={`btn flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm transition-colors ${
+              userFavorited
+                ? "bg-amber-100 text-amber-700 border border-amber-200 hover:bg-amber-200/80"
+                : "btn-outline"
+            }`}
+            aria-pressed={userFavorited}
+            title={userFavorited ? "Remove from Favorites" : "Add to Favorites"}
+          >
+            {userFavorited ? (
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+              </svg>
+            ) : (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+              </svg>
+            )}
+            <span>{userFavorited ? "Favorited" : "Favorite"}</span>
+          </button>
           {!isOwner && (
             <button
               type="button"

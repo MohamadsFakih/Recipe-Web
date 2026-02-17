@@ -28,6 +28,7 @@ export default function Header() {
   const navLinks = [
     { href: "/home", label: "Discover" },
     { href: "/dashboard", label: "My Recipes" },
+    { href: "/favorites", label: "Favorites" },
     { href: "/profile", label: "Profile" },
   ];
 

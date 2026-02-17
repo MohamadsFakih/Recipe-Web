@@ -26,9 +26,12 @@ export default async function RecipePage({ params }: { params: Promise<{ id: str
 
   if (!recipe) notFound();
 
-  const [likeCount, userLike, comments] = await Promise.all([
+  const [likeCount, userLike, userFavorite, comments] = await Promise.all([
     prisma.recipeLike.count({ where: { recipeId: id } }),
     prisma.recipeLike.findUnique({
+      where: { recipeId_userId: { recipeId: id, userId: session.user.id } },
+    }),
+    prisma.recipeFavorite.findUnique({
       where: { recipeId_userId: { recipeId: id, userId: session.user.id } },
     }),
     prisma.recipeComment.findMany({
@@ -70,6 +73,7 @@ export default async function RecipePage({ params }: { params: Promise<{ id: str
           canEdit={canEdit}
           likeCount={likeCount}
           userLiked={!!userLike}
+          userFavorited={!!userFavorite}
           comments={commentList}
         />
       </main>

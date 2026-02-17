@@ -30,30 +30,43 @@ export async function GET(request: Request) {
       ...(status ? { status } : {}),
     },
     orderBy: { updatedAt: "desc" },
+    include: {
+      _count: { select: { likes: true, favorites: true } },
+    },
   });
 
-  let shared: Awaited<ReturnType<typeof prisma.recipe.findMany>> = [];
-  if (includeShared) {
-    shared = await prisma.recipe.findMany({
-      where: {
-        shares: {
-          some: { sharedWithId: session.user.id },
+  const shared = includeShared
+    ? await prisma.recipe.findMany({
+        where: {
+          shares: { some: { sharedWithId: session.user.id } },
+          ...(status ? { status } : {}),
         },
-        ...(status ? { status } : {}),
-      },
-      include: { user: { select: { name: true, email: true } } },
-      orderBy: { updatedAt: "desc" },
-    });
-  }
+        include: {
+          user: { select: { name: true, email: true } },
+          _count: { select: { likes: true, favorites: true } },
+        },
+        orderBy: { updatedAt: "desc" },
+      })
+    : [];
 
-  const ownedWithParsed = owned.map((r) => ({
-    ...r,
-    ingredients: JSON.parse(r.ingredients || "[]") as string[],
-  }));
-  const sharedWithParsed = shared.map((r) => ({
-    ...r,
-    ingredients: JSON.parse(r.ingredients || "[]") as string[],
-  }));
+  const ownedWithParsed = owned.map((r) => {
+    const { _count, ...rest } = r;
+    return {
+      ...rest,
+      ingredients: JSON.parse(r.ingredients || "[]") as string[],
+      likeCount: _count.likes,
+      favoriteCount: _count.favorites,
+    };
+  });
+  const sharedWithParsed = shared.map((r) => {
+    const { _count, ...rest } = r;
+    return {
+      ...rest,
+      ingredients: JSON.parse(r.ingredients || "[]") as string[],
+      likeCount: _count.likes,
+      favoriteCount: _count.favorites,
+    };
+  });
 
   return NextResponse.json({
     owned: ownedWithParsed,

@@ -30,6 +30,7 @@ model User {
   notificationsSent     Notification[] @relation("NotificationsSent")
   recipeLikes    RecipeLike[]
   recipeComments RecipeComment[]
+  recipeFavorites RecipeFavorite[]
 }
 
 model Notification {
@@ -64,6 +65,7 @@ model Recipe {
   shares RecipeShare[]
   likes  RecipeLike[]
   comments RecipeComment[]
+  favorites RecipeFavorite[]
 }
 
 model RecipeLike {
@@ -125,4 +127,16 @@ model RecipeShare {
   sharedWith User @relation("SharedWith", fields: [sharedWithId], references: [id], onDelete: Cascade)
 
   @@unique([recipeId, sharedWithId])
+}
+
+model RecipeFavorite {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  recipeId String
+  recipe   Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([recipeId, userId])
 }
