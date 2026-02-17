@@ -1,0 +1,101 @@
+// Recipe Management System - Prisma Schema
+// Local: SQLite. For deployment set DATABASE_URL to Postgres (e.g. Vercel Postgres).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  recipes        Recipe[]
+  sharedRecipes  RecipeShare[] @relation("SharedWith")
+  ownedShares    RecipeShare[] @relation("Owner")
+  friendsInitiated Friend[]    @relation("FriendsInitiated")
+  friendsReceived  Friend[]    @relation("FriendsReceived")
+  friendRequestsSent    FriendRequest[] @relation("FriendRequestsSent")
+  friendRequestsReceived FriendRequest[] @relation("FriendRequestsReceived")
+  notificationsReceived Notification[] @relation("NotificationsReceived")
+  notificationsSent     Notification[] @relation("NotificationsSent")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  type      String   // e.g. FRIEND_ACCEPTED
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  toUserId   String
+  toUser     User   @relation("NotificationsReceived", fields: [toUserId], references: [id], onDelete: Cascade)
+  fromUserId String
+  fromUser   User   @relation("NotificationsSent", fields: [fromUserId], references: [id], onDelete: Cascade)
+}
+
+model Recipe {
+  id              String   @id @default(cuid())
+  name            String
+  ingredients     String   // JSON array of strings
+  instructions    String
+  cuisineType     String?
+  prepTimeMinutes Int?
+  cookTimeMinutes Int?
+  status          String   @default("TO_TRY") // FAVORITE | TO_TRY | MADE_BEFORE
+  isPublic        Boolean  @default(false)
+  imageUrl        String?  // first image, for backward compat / list thumbnails
+  imageUrls       String?  // JSON array of image URLs for slideshow
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  userId String
+  user   User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shares RecipeShare[]
+}
+
+model Friend {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  userId   String
+  user     User   @relation("FriendsInitiated", fields: [userId], references: [id], onDelete: Cascade)
+  friendId String
+  friend   User   @relation("FriendsReceived", fields: [friendId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, friendId])
+}
+
+model FriendRequest {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  fromUserId String
+  fromUser   User   @relation("FriendRequestsSent", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUserId   String
+  toUser     User   @relation("FriendRequestsReceived", fields: [toUserId], references: [id], onDelete: Cascade)
+
+  @@unique([fromUserId, toUserId])
+}
+
+model RecipeShare {
+  id        String   @id @default(cuid())
+  canEdit   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  recipeId String
+  recipe   Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  ownerId  String
+  owner    User   @relation("Owner", fields: [ownerId], references: [id], onDelete: Cascade)
+  sharedWithId String
+  sharedWith User @relation("SharedWith", fields: [sharedWithId], references: [id], onDelete: Cascade)
+
+  @@unique([recipeId, sharedWithId])
+}
