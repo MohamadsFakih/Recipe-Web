@@ -2,8 +2,11 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-// AI feature: suggest recipes from ingredients or generate idea.
-// Uses OpenAI if OPENAI_API_KEY is set; otherwise returns a simple in-app suggestion.
+// AI feature: suggest recipe names from ingredients.
+// Uses Hugging Face Router (Responses API) if HUGGINGFACE_API_KEY is set; else local matching.
+
+const HF_ROUTER = "https://router.huggingface.co/v1/responses";
+const DEFAULT_MODEL = "mistralai/Mistral-7B-Instruct-v0.2";
 
 export async function POST(request: Request) {
   const session = await auth();
@@ -20,28 +23,41 @@ export async function POST(request: Request) {
         : [];
     const cuisine = typeof body.cuisine === "string" ? body.cuisine.trim() : "";
 
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (apiKey) {
-      const OpenAI = (await import("openai")).default;
-      const openai = new OpenAI({ apiKey });
-      const prompt = cuisine
-        ? `Suggest 3 concrete recipe names (only titles, one per line) that use these ingredients: ${ingredients.join(", ")}. Cuisine style: ${cuisine}.`
-        : `Suggest 3 concrete recipe names (only titles, one per line) that use these ingredients: ${ingredients.join(", ")}.`;
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [{ role: "user", content: prompt }],
-        max_tokens: 150,
+    const apiKey = process.env.HUGGINGFACE_API_KEY ?? process.env.HF_TOKEN;
+    if (apiKey && ingredients.length > 0) {
+      const model = process.env.HUGGINGFACE_MODEL ?? DEFAULT_MODEL;
+      const input = cuisine
+        ? `Suggest 3 recipe names only, one per line, using: ${ingredients.join(", ")}. Cuisine: ${cuisine}.`
+        : `Suggest 3 recipe names only, one per line, using: ${ingredients.join(", ")}.`;
+      const res = await fetch(HF_ROUTER, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          instructions: "Reply with only the recipe names, one per line. No numbering or extra text.",
+          input,
+        }),
       });
-      const text = completion.choices[0]?.message?.content ?? "";
-      const suggestions = text
-        .split("\n")
-        .map((s) => s.replace(/^\d+\.\s*/, "").trim())
-        .filter(Boolean)
-        .slice(0, 5);
-      return NextResponse.json({ suggestions, source: "openai" });
+
+      if (res.ok) {
+        const data = (await res.json()) as { output_text?: string };
+        const text = data?.output_text ?? "";
+        const suggestions = text
+          .split("\n")
+          .map((s) => s.replace(/^\d+\.\s*/, "").trim())
+          .filter(Boolean)
+          .slice(0, 5);
+        return NextResponse.json({
+          suggestions: suggestions.length ? suggestions : ["Try more ingredients for suggestions."],
+          source: "huggingface",
+        });
+      }
     }
 
-    // Fallback: find matching recipes from user's + shared recipes by ingredient text
+    // Fallback: match from user's + shared recipes
     const ownedAndShared = await prisma.recipe.findMany({
       where: {
         OR: [
