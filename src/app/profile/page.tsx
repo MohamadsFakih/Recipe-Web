@@ -10,8 +10,16 @@ export default async function ProfilePage() {
   return (
     <div className="min-h-screen">
       <Header />
-      <main className="max-w-2xl mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold text-[var(--foreground)] mb-6">My profile</h1>
+      <main className="max-w-2xl mx-auto px-4 sm:px-6 py-8">
+        <div className="mb-8">
+          <h1
+            className="text-3xl font-bold text-[var(--foreground)] leading-tight mb-1"
+            style={{ fontFamily: "var(--font-playfair), Georgia, serif", letterSpacing: "-0.02em" }}
+          >
+            My Profile
+          </h1>
+          <p className="text-sm text-[var(--muted)]">Manage your account and connections</p>
+        </div>
         <ProfileClient />
       </main>
     </div>

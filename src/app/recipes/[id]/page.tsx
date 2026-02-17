@@ -2,7 +2,6 @@ import { auth } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import Header from "@/components/Header";
-import Link from "next/link";
 import RecipeDetail from "./RecipeDetail";
 
 export default async function RecipePage({ params }: { params: Promise<{ id: string }> }) {
@@ -39,7 +38,7 @@ export default async function RecipePage({ params }: { params: Promise<{ id: str
   return (
     <div className="min-h-screen">
       <Header />
-      <main className="max-w-2xl mx-auto px-4 py-8">
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
         <RecipeDetail
           recipe={{
             ...recipe,
