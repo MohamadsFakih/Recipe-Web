@@ -15,6 +15,7 @@ model User {
   email        String   @unique
   passwordHash String
   name         String?
+  image        String?  // profile picture URL (e.g. /uploads/avatars/xxx.jpg)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

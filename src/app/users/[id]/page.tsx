@@ -12,7 +12,7 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
 
   const user = await prisma.user.findUnique({
     where: { id },
-    select: { id: true, name: true, email: true },
+    select: { id: true, name: true, email: true, image: true },
   });
   if (!user) notFound();
 

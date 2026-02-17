@@ -7,6 +7,7 @@ type Profile = {
   id: string;
   email: string;
   name: string | null;
+  image: string | null;
   createdAt: string;
   recipeCount: number;
   publicCount: number;
@@ -14,7 +15,7 @@ type Profile = {
 
 type FriendEntry = {
   id: string;
-  friend: { id: string; email: string; name: string | null };
+  friend: { id: string; email: string; name: string | null; image?: string | null };
 };
 
 type FriendRequestEntry = {
@@ -35,6 +36,7 @@ export default function ProfileClient() {
   const [addFriendLoading, setAddFriendLoading] = useState(false);
   const [addFriendError, setAddFriendError] = useState("");
   const [addFriendSuccess, setAddFriendSuccess] = useState("");
+  const [photoUploading, setPhotoUploading] = useState(false);
 
   function loadProfile() {
     fetch("/api/me")
@@ -133,6 +135,24 @@ export default function ProfileClient() {
     if (res.ok) setPendingRequests((prev) => prev.filter((r) => r.id !== requestId));
   }
 
+  async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !file.type.startsWith("image/")) return;
+    setPhotoUploading(true);
+    try {
+      const formData = new FormData();
+      formData.set("image", file);
+      const res = await fetch("/api/me/profile/image", { method: "POST", body: formData });
+      const data = await res.json();
+      if (res.ok && data.image) {
+        setProfile((p) => (p ? { ...p, image: data.image } : null));
+      }
+    } finally {
+      setPhotoUploading(false);
+      e.target.value = "";
+    }
+  }
+
   if (loading || !profile) {
     return (
       <div className="space-y-4 animate-pulse">
@@ -148,10 +168,10 @@ export default function ProfileClient() {
     <div className="space-y-6 animate-slide-up">
 
       {/* ── Profile card ── */}
-      <div className="card rounded-2xl overflow-hidden">
+      <div className="rounded-2xl border border-[var(--card-border)] bg-[var(--card)] shadow-[var(--shadow-card)] overflow-visible">
         {/* Banner gradient */}
         <div
-          className="h-24 relative"
+          className="h-20 sm:h-24 relative rounded-t-2xl shrink-0 overflow-hidden"
           style={{ background: "linear-gradient(135deg, #1a4731, #2d7a5c, #4aab82)" }}
         >
           <div className="absolute inset-0 opacity-20"
@@ -159,17 +179,47 @@ export default function ProfileClient() {
           />
         </div>
 
-        <div className="px-6 pb-6">
-          {/* Avatar */}
-          <div className="flex items-end justify-between -mt-8 mb-4">
-            <div className="w-16 h-16 rounded-2xl bg-white border-4 border-[var(--card)] flex items-center justify-center text-2xl font-bold text-[var(--accent)] shadow-md"
-              style={{ background: "linear-gradient(135deg, var(--accent-soft), var(--accent-soft))" }}
-            >
-              {initials}
+        {/* Content: z-10 so avatar and link sit above banner and are never covered */}
+        <div className="px-6 pb-6 relative z-10 -mt-10 sm:-mt-12 rounded-b-2xl bg-[var(--card)]">
+          <div className="flex items-end justify-between gap-4 mb-4">
+            {/* Avatar - never clipped; fully below the fold so banner can’t cover it */}
+            <div className="relative shrink-0">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl border-4 border-[var(--card)] shadow-lg overflow-hidden bg-[var(--accent-soft)] flex items-center justify-center text-2xl sm:text-3xl font-bold text-[var(--accent)]">
+                {profile.image ? (
+                  <img
+                    src={profile.image}
+                    alt="Profile"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  initials
+                )}
+              </div>
+              <label className="absolute bottom-0 right-0 flex items-center justify-center w-8 h-8 rounded-lg bg-[var(--accent)] text-white cursor-pointer shadow hover:bg-[var(--accent-hover)] transition-colors">
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  className="sr-only"
+                  onChange={handlePhotoChange}
+                  disabled={photoUploading}
+                />
+                {photoUploading ? (
+                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 13v4a2 2 0 01-2 2h-2" />
+                  </svg>
+                )}
+              </label>
             </div>
             <Link
               href="/dashboard"
-              className="flex items-center gap-1.5 text-sm text-[var(--accent)] font-medium hover:underline underline-offset-2"
+              className="flex items-center gap-1.5 text-sm text-[var(--accent)] font-medium hover:underline underline-offset-2 pb-1"
             >
               View recipes →
             </Link>
@@ -349,8 +399,12 @@ export default function ProfileClient() {
                     className="flex items-center justify-between gap-3 rounded-xl border border-[var(--card-border)] bg-[var(--surface)] px-4 py-3"
                   >
                     <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <div className="w-8 h-8 rounded-full bg-[var(--accent-soft)] flex items-center justify-center text-xs font-bold text-[var(--accent)] shrink-0">
-                        {(friend.name || friend.email).charAt(0).toUpperCase()}
+                      <div className="w-8 h-8 rounded-full overflow-hidden bg-[var(--accent-soft)] flex items-center justify-center text-xs font-bold text-[var(--accent)] shrink-0">
+                        {friend.image ? (
+                          <img src={friend.image} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          (friend.name || friend.email).charAt(0).toUpperCase()
+                        )}
                       </div>
                       <div className="min-w-0">
                         <Link href={`/users/${friend.id}`} className="font-medium text-[var(--foreground)] hover:text-[var(--accent)] text-sm block truncate">

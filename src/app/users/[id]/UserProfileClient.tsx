@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 
-type User = { id: string; name: string | null; email: string };
+type User = { id: string; name: string | null; email: string; image?: string | null };
 type Recipe = {
   id: string;
   name: string;
@@ -105,10 +105,14 @@ export default function UserProfileClient({
           className="h-20"
           style={{ background: "linear-gradient(135deg, #1a4731, #2d7a5c, #4aab82)" }}
         />
-        <div className="px-6 pb-6">
-          <div className="flex items-end justify-between -mt-7 mb-4">
-            <div className="w-14 h-14 rounded-2xl bg-[var(--accent-soft)] border-4 border-[var(--card)] flex items-center justify-center text-xl font-bold text-[var(--accent)] shadow-md">
-              {initials}
+        <div className="px-6 pb-6 relative z-10 -mt-10">
+          <div className="flex items-end justify-between mb-4">
+            <div className="w-16 h-16 rounded-2xl border-4 border-[var(--card)] shadow-md overflow-hidden bg-[var(--accent-soft)] flex items-center justify-center text-xl font-bold text-[var(--accent)]">
+              {user.image ? (
+                <img src={user.image} alt="" className="w-full h-full object-cover" />
+              ) : (
+                initials
+              )}
             </div>
             {/* Friend action */}
             <div className="flex items-center gap-2">
