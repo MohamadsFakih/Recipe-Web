@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
+import { uploadImage } from "@/lib/upload";
 
-const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads", "avatars");
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
 export async function POST(request: Request) {
@@ -29,15 +27,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Image must be under 2MB" }, { status: 400 });
     }
 
-    await mkdir(UPLOAD_DIR, { recursive: true });
     const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
     const safeExt = ["jpg", "jpeg", "png", "webp", "gif"].includes(ext) ? ext : "jpg";
     const filename = `${session.user.id}-${Date.now()}.${safeExt}`;
-    const filepath = path.join(UPLOAD_DIR, filename);
-    const bytes = await file.arrayBuffer();
-    await writeFile(filepath, Buffer.from(bytes));
+    const imageUrl = await uploadImage(file, "avatars", filename);
 
-    const imageUrl = `/uploads/avatars/${filename}`;
     await prisma.user.update({
       where: { id: session.user.id },
       data: { image: imageUrl },

@@ -44,6 +44,12 @@ The app uses **SQLite** locally; on Vercel, when you set `DATABASE_URL` to a Pos
 | `AUTH_SECRET` | Random secret (32+ chars) | Generate: `openssl rand -base64 32` |
 | `NEXTAUTH_URL` | Your app URL | After first deploy use e.g. `https://your-app.vercel.app` (no trailing slash). You can set this after the first deploy. |
 
+**Images (profile & recipe photos):**
+
+| Name | Value |
+|------|--------|
+| `BLOB_READ_WRITE_TOKEN` | From Vercel: **Storage** → create/connect **Blob** store → token is added automatically. Without this, uploads are written to local disk and **do not persist** on Vercel. |
+
 Optional:
 
 | Name | Value |
@@ -84,17 +90,20 @@ Without `NEXTAUTH_URL`, login may redirect to the wrong URL. With it set, anyone
 - [ ] Code pushed to GitHub (or similar).
 - [ ] Postgres database created (Vercel Postgres or Neon).
 - [ ] Vercel project created and repo connected.
-- [ ] Env vars set: `DATABASE_URL`, `AUTH_SECRET`, and after first deploy `NEXTAUTH_URL`.
+- [ ] Env vars set: `DATABASE_URL`, `AUTH_SECRET`, and after first deploy `NEXTAUTH_URL`. For images: add **Blob** storage and ensure `BLOB_READ_WRITE_TOKEN` is set.
 - [ ] Redeploy after setting `NEXTAUTH_URL` (tables are created automatically on each build).
 
 ---
 
 ## File uploads (profile and recipe images)
 
-On Vercel, the filesystem is **read-only** except for `/tmp`. Files saved under `public/uploads/` **do not persist** and are lost on the next request or deploy.
+On Vercel, the filesystem is **read-only**; files under `public/uploads/` do not persist. The app uses **Vercel Blob** when `BLOB_READ_WRITE_TOKEN` is set:
 
-- The app will still run: users can register, log in, create recipes, like, comment, and favorite.
-- To **persist** profile pictures and recipe images in production, you’d store files in **Vercel Blob**, **AWS S3**, or similar and change the upload API routes to use that storage. The current code is ready for that change when you add a storage provider.
+1. In the Vercel dashboard go to **Storage** → **Create Database** (or **Connect Store**) → choose **Blob**.
+2. Connect the Blob store to your project. Vercel adds **`BLOB_READ_WRITE_TOKEN`** to your env.
+3. Redeploy. Profile and recipe image uploads will then be stored in Blob and images will show correctly.
+
+If you don’t set the token, uploads still run but files are written to local disk and **won’t persist** on Vercel (images will disappear after the request or deploy).
 
 ---
 

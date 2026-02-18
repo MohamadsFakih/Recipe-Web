@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
+import { uploadImage } from "@/lib/upload";
 
-const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads", "recipes");
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
 export async function POST(
@@ -44,15 +42,11 @@ export async function POST(
       return NextResponse.json({ error: "Image must be under 5MB" }, { status: 400 });
     }
 
-    await mkdir(UPLOAD_DIR, { recursive: true });
     const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
     const safeExt = ["jpg", "jpeg", "png", "webp", "gif"].includes(ext) ? ext : "jpg";
     const filename = `${recipeId}-${Date.now()}.${safeExt}`;
-    const filepath = path.join(UPLOAD_DIR, filename);
-    const bytes = await file.arrayBuffer();
-    await writeFile(filepath, Buffer.from(bytes));
+    const newUrl = await uploadImage(file, "recipes", filename);
 
-    const newUrl = `/uploads/recipes/${filename}`;
     const current = recipe.imageUrls ? (JSON.parse(recipe.imageUrls) as string[]) : (recipe.imageUrl ? [recipe.imageUrl] : []);
     const imageUrls = [...current, newUrl];
     const imageUrl = imageUrls[0] ?? newUrl;

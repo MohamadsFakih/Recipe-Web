@@ -47,6 +47,60 @@ function findFirstText(obj: unknown): string {
   return "";
 }
 
+/** Find end of a double-quoted string value starting at startIndex (skips \"). */
+function findStringEnd(s: string, startIndex: number): number {
+  let i = startIndex;
+  while (i < s.length) {
+    const c = s[i];
+    if (c === "\\") {
+      i += 2;
+      continue;
+    }
+    if (c === '"') return i;
+    i += 1;
+  }
+  return -1;
+}
+
+/** Try to extract recipe fields from malformed JSON (e.g. first response with literal newlines in instructions). */
+function salvageRecipeJson(text: string): Record<string, unknown> | null {
+  const obj: Record<string, unknown> = {};
+  const keyPattern = (key: string) => new RegExp(`"${key}"\\s*:\\s*"`, "g");
+  const simpleString = (key: string): string | undefined => {
+    const re = keyPattern(key);
+    const m = re.exec(text);
+    if (!m) return undefined;
+    const start = m.index + m[0].length;
+    const end = findStringEnd(text, start);
+    if (end === -1) return undefined;
+    return text
+      .slice(start, end)
+      .replace(/\\n/g, "\n")
+      .replace(/\\"/g, '"')
+      .replace(/\\\\/g, "\\");
+  };
+  obj.name = simpleString("name") ?? "Generated Recipe";
+  obj.instructions = simpleString("instructions") ?? "";
+  const ct = simpleString("cuisineType");
+  if (ct) obj.cuisineType = ct;
+  const ingredientsMatch = text.match(/"ingredients"\s*:\s*\[([\s\S]*?)\]/);
+  if (ingredientsMatch) {
+    try {
+      const arr = JSON.parse("[" + ingredientsMatch[1] + "]");
+      if (Array.isArray(arr)) obj.ingredients = arr.filter((i): i is string => typeof i === "string");
+    } catch {
+      const parts = ingredientsMatch[1].match(/"([^"\\]*(?:\\.[^"\\]*)*)"/g);
+      if (parts) obj.ingredients = parts.map((p) => JSON.parse(p));
+    }
+  }
+  const prepMatch = text.match(/"prepTimeMinutes"\s*:\s*(\d+)/);
+  if (prepMatch) obj.prepTimeMinutes = parseInt(prepMatch[1], 10);
+  const cookMatch = text.match(/"cookTimeMinutes"\s*:\s*(\d+)/);
+  if (cookMatch) obj.cookTimeMinutes = parseInt(cookMatch[1], 10);
+  if (obj.name || obj.instructions) return obj;
+  return null;
+}
+
 /** Escape literal newlines inside the "instructions" JSON string value so JSON.parse works. */
 function fixInstructionsNewlines(jsonStr: string): string {
   const key = '"instructions"';
@@ -88,10 +142,13 @@ function extractJson(text: string): Record<string, unknown> | null {
     cleaned = cleaned.slice(start, end + 1);
   }
   cleaned = cleaned.replace(/,(\s*[}\]])/g, "$1");
+  // Fix literal newlines in "instructions" before first parse (first response often has them)
+  if (cleaned.includes('"instructions"')) {
+    cleaned = fixInstructionsNewlines(cleaned);
+  }
   try {
     return JSON.parse(cleaned) as Record<string, unknown>;
   } catch {
-    // Model often returns "instructions": " with literal newlines; escape them and retry
     try {
       const fixed = fixInstructionsNewlines(cleaned);
       return JSON.parse(fixed) as Record<string, unknown>;
@@ -160,7 +217,11 @@ export async function POST(request: Request) {
       );
     }
 
-    const json = text ? extractJson(text) : null;
+    let json = text ? extractJson(text) : null;
+    // Salvage: if response looks like recipe JSON but parse failed (e.g. first call, truncated), extract fields by regex
+    if (!json && text && text.includes('"name"') && text.includes('"instructions"')) {
+      json = salvageRecipeJson(text);
+    }
     if (json) {
       return NextResponse.json({
         name: typeof json.name === "string" ? json.name : "Generated Recipe",
