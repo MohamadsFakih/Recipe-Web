@@ -193,6 +193,7 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
   const stats = {
     total: recipes.owned.length,
     favorites: recipes.owned.reduce((sum, r) => sum + (r.favoriteCount ?? 0), 0),
+    likes: recipes.owned.reduce((sum, r) => sum + (r.likeCount ?? 0), 0),
     shared: recipes.shared.length,
   };
 
@@ -230,7 +231,7 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
           {[
             { label: "Total recipes", value: stats.total, icon: "📋" },
             { label: "Times favorited", value: stats.favorites, icon: "⭐" },
-            { label: "Shared with me", value: stats.shared, icon: "🤝" },
+            { label: "Total likes", value: stats.likes, icon: "❤️" },
           ].map(({ label, value, icon }) => (
             <div key={label} className="card px-4 py-4 rounded-xl text-center">
               <div className="text-xl mb-1">{icon}</div>
