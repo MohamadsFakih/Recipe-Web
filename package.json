@@ -4,11 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "npx next dev --webpack",
-    "build": "prisma generate && npx next build",
+    "build": "node scripts/ensure-postgres-for-build.js && prisma generate && prisma db push && npx next build",
     "start": "npx next start",
     "lint": "eslint",
     "postinstall": "prisma generate",
+    "db:start": "docker compose up -d",
     "db:push": "prisma db push",
+    "db:setup": "prisma db push",
     "db:migrate": "prisma migrate deploy"
   },
   "dependencies": {
