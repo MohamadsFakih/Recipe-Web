@@ -1,7 +1,6 @@
 import { auth } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import Header from "@/components/Header";
-import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import UserProfileClient from "./UserProfileClient";
 
@@ -13,7 +12,7 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
 
   const user = await prisma.user.findUnique({
     where: { id },
-    select: { id: true, name: true, email: true },
+    select: { id: true, name: true, email: true, image: true },
   });
   if (!user) notFound();
 
@@ -34,14 +33,8 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
   return (
     <div className="min-h-screen">
       <Header />
-      <main className="max-w-2xl mx-auto px-4 py-8">
+      <main className="max-w-2xl mx-auto px-4 sm:px-6 py-8">
         <UserProfileClient user={user} recipes={recipeList} />
-
-        <p className="mt-6">
-          <Link href="/home" className="text-[var(--accent)] hover:underline">
-            ← Back to Home
-          </Link>
-        </p>
       </main>
     </div>
   );

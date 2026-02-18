@@ -16,11 +16,11 @@ export async function GET() {
 
   const asUserId = await prisma.friend.findMany({
     where: { userId: session.user.id },
-    include: { friend: { select: { id: true, email: true, name: true } } },
+    include: { friend: { select: { id: true, email: true, name: true, image: true } } },
   });
   const asFriendId = await prisma.friend.findMany({
     where: { friendId: session.user.id },
-    include: { user: { select: { id: true, email: true, name: true } } },
+    include: { user: { select: { id: true, email: true, name: true, image: true } } },
   });
 
   const list = [

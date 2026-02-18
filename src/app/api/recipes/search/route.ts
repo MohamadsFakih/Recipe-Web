@@ -58,13 +58,19 @@ export async function GET(request: Request) {
     orderBy: { updatedAt: "desc" },
     include: {
       user: { select: { name: true, email: true } },
+      _count: { select: { likes: true, favorites: true } },
     },
   });
 
-  const withParsed = recipes.map((r) => ({
-    ...r,
-    ingredients: JSON.parse(r.ingredients || "[]") as string[],
-  }));
+  const withParsed = recipes.map((r) => {
+    const { _count, ...rest } = r;
+    return {
+      ...rest,
+      ingredients: JSON.parse(r.ingredients || "[]") as string[],
+      likeCount: _count.likes,
+      favoriteCount: _count.favorites,
+    };
+  });
 
   return NextResponse.json(withParsed);
 }
