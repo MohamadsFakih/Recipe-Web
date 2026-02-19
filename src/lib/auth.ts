@@ -18,6 +18,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           where: { email: String(credentials.email) },
         });
         if (!user) return null;
+        if (user.disabled) return null;
         const valid = await bcrypt.compare(
           String(credentials.password),
           user.passwordHash
@@ -27,6 +28,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           id: user.id,
           email: user.email,
           name: user.name ?? undefined,
+          role: user.role,
         };
       },
     }),
@@ -37,6 +39,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.id = user.id;
         token.email = user.email;
         token.name = user.name;
+        token.role = user.role;
       }
       return token;
     },
@@ -44,6 +47,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (session.user) {
         session.user.id = token.id as string;
         session.user.email = token.email as string;
+        session.user.role = token.role as string;
       }
       return session;
     },
@@ -59,4 +63,5 @@ export type SessionUser = {
   id: string;
   email: string;
   name?: string | null;
+  role?: string;
 };

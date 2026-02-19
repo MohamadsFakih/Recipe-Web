@@ -3,12 +3,22 @@ import { auth } from "@/lib/auth";
 
 export default auth((req) => {
   const isLoggedIn = !!req.auth;
-  const isAuthPage = req.nextUrl.pathname.startsWith("/login") || req.nextUrl.pathname.startsWith("/register");
-  if (!isLoggedIn && !isAuthPage) {
+  const path = req.nextUrl.pathname;
+  const isAuthPage = path.startsWith("/login") || path.startsWith("/register");
+  const isAdmin = req.auth?.user?.role === "ADMIN";
+  const isAdminArea = path.startsWith("/admin");
+
+  if (!isLoggedIn && !isAuthPage && !isAdminArea) {
     return Response.redirect(new URL("/login", req.nextUrl.origin));
   }
   if (isLoggedIn && isAuthPage) {
-    return Response.redirect(new URL("/home", req.nextUrl.origin));
+    return Response.redirect(new URL(isAdmin ? "/admin" : "/home", req.nextUrl.origin));
+  }
+  if (isLoggedIn && isAdmin && !isAdminArea) {
+    const isViewingRecipe = /^\/recipes\/[^/]+$/.test(path);
+    if (!isViewingRecipe) {
+      return Response.redirect(new URL("/admin", req.nextUrl.origin));
+    }
   }
   return NextResponse.next();
 });

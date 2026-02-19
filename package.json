@@ -3,15 +3,19 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "npx next dev --webpack",
+    "dev": "npm run db:seed && npx next dev --webpack",
     "build": "node scripts/ensure-postgres-for-build.js && prisma generate && prisma db push && npx next build",
-    "start": "npx next start",
+    "start": "npm run db:seed && npx next start",
     "lint": "eslint",
     "postinstall": "node scripts/ensure-postgres-for-build.js && prisma generate",
     "db:start": "docker compose up -d",
     "db:push": "prisma db push",
     "db:setup": "prisma db push",
-    "db:migrate": "prisma migrate deploy"
+    "db:migrate": "prisma migrate deploy",
+    "db:seed": "node prisma/seed.cjs"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.cjs"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
@@ -26,6 +30,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "dotenv": "^16.4.5",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
     "@types/react": "^19",

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, Suspense } from "react";
-import { signIn } from "next-auth/react";
+import { signIn, getSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
@@ -31,7 +31,9 @@ function LoginForm() {
         setLoading(false);
         return;
       }
-      router.push(callbackUrl);
+      const session = await getSession();
+      const destination = session?.user?.role === "ADMIN" ? "/admin" : callbackUrl;
+      router.push(destination);
       router.refresh();
     } catch {
       setError("Something went wrong. Please try again.");
