@@ -95,17 +95,6 @@ export default function Header() {
           </Link>
 
           <Notifications />
-
-          <button
-            onClick={() => signOut({ callbackUrl: "/login" })}
-            className="btn btn-ghost p-2 rounded-lg"
-            title="Sign out"
-            aria-label="Sign out"
-          >
-            <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-          </button>
         </div>
 
         {/* ── Mobile: Notifications + Hamburger ── */}

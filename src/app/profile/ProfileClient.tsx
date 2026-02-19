@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { signOut } from "next-auth/react";
 
 type Profile = {
   id: string;
@@ -287,6 +288,20 @@ export default function ProfileClient() {
             ))}
           </div>
         </div>
+      </div>
+
+      {/* ── Sign out ── */}
+      <div className="rounded-2xl border border-[var(--card-border)] bg-[var(--card)] shadow-[var(--shadow-card)] p-5">
+        <button
+          type="button"
+          onClick={() => signOut({ callbackUrl: "/login" })}
+          className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium border border-[var(--card-border)] text-[var(--foreground)] hover:bg-[var(--surface)] hover:border-[var(--muted)] transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+          Sign out
+        </button>
       </div>
 
       {/* ── Friends section ── */}
